@@ -21,9 +21,10 @@
     </div>
 
     <whats-new class="mb-4" :items="newsItems" />
+    <nagasaki-city-news class="mb-4" />
     <static-info
       class="mb-4"
-      :url="localePath('/flow')"
+      :url="localePath('/nagasaki/flow')"
       :text="$t('自分や家族の症状に不安や心配があればまずは電話相談をどうぞ')"
       :btn-text="$t('相談の手順を見る')"
     />
@@ -46,6 +47,7 @@ import { MetaInfo } from 'vue-meta'
 import { bodik } from '../services'
 import PageHeader from '@/components/PageHeader.vue'
 import WhatsNew from '@/components/WhatsNew.vue'
+import NagasakiCityNews from '@/brigade/nagasaki/components/NagasakiCityNews.vue'
 import StaticInfo from '@/components/StaticInfo.vue'
 import Data from '@/data/data.json'
 import News from '@/brigade/nagasaki/data/news.json'
@@ -58,12 +60,14 @@ import HealthCenterCard from '@/brigade/nagasaki/components/cards/HealthCenterCa
 
 import { convertDatetimeToISO8601Format } from '@/utils/formatDate'
 
-const bodic = 'https://data.bodik.jp/api/action/datastore_search?resource_id='
+const bodicUrl =
+  'https://data.bodik.jp/api/action/datastore_search?resource_id='
 
 export default Vue.extend({
   components: {
     PageHeader,
     WhatsNew,
+    NagasakiCityNews,
     StaticInfo,
     ConfirmedCasesDetailsCard,
     ConfirmedCasesNumberCard,
@@ -74,16 +78,20 @@ export default Vue.extend({
   async fetch({ store, app: { $axios } }) {
     try {
       const res = await $axios.get(
-        bodic + '71e83845-2648-4cb3-a69d-9f5f5412feb2'
+        bodicUrl + '71e83845-2648-4cb3-a69d-9f5f5412feb2'
       )
       // console.log(res.data, 'url')
       store.commit('setBodicData1', res.data.result.records)
 
       const res2 = await $axios.get(
-        bodic + 'de7ce61e-1849-47a1-b758-bca3f809cdf8'
+        bodicUrl + 'de7ce61e-1849-47a1-b758-bca3f809cdf8'
       )
       // console.log(res2, 'de7ce61e')
       store.commit('setBodicData2', res2.data.result.records)
+
+      const newsRes = await $axios.get(bodicUrl + bodik.nagasakiCityNewsId)
+
+      store.commit('setNagasakiCityNews', newsRes.data.result.records)
     } catch (error) {
       console.log(error, 'error')
     }
@@ -107,26 +115,17 @@ export default Vue.extend({
       return convertDatetimeToISO8601Format(this.$data.Data.lastUpdate)
     }
   },
-  mounted() {
-    // this.loadBodik()
-    // this.loadBodik2()
+  async mounted() {
+    const result1 = await bodik.fetch1()
+    this.$store.commit('setBodicData1', result1.records)
+
+    const result2 = await bodik.fetch2()
+    this.$store.commit('setBodicData2', result2.records)
+
+    const news = await bodik.fetchNagasakiCityNews()
+    this.$store.commit('setNagasakiCityNews', news.records)
   },
-  methods: {
-    async loadBodik() {
-      console.log('***************************')
-      const result = await bodik.fetch1()
-      // console.log("result", result);
-      // console.log("result", result.records);
-      this.$store.commit('setBodicData1', result)
-    },
-    async loadBodik2() {
-      console.log('***************************')
-      const result = await bodik.fetch2()
-      // console.log("result", result);
-      // console.log("result", result.records);
-      this.$store.commit('setBodicData2', result)
-    }
-  },
+  methods: {},
   head(): MetaInfo {
     return {
       title: this.$t('県内の最新感染動向') as string
